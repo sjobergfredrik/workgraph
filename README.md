@@ -88,6 +88,19 @@ make up        # start containers
 make seed rank # load demo data + rank
 ```
 
+## Security
+
+WorkGraph is **local-first by design** — Neo4j runs in Docker bound to localhost
+and your data never leaves your machine. Two notes:
+
+- The default Neo4j password (`workgraph`) is a convenience for local dev only.
+  **If you ever expose Neo4j beyond localhost, change it** — set `NEO4J_PASSWORD`
+  (and `NEO4J_AUTH` in `docker-compose.yml`) to something real.
+- `config/workgraph.yaml` may end up holding your own email and paths. It's
+  tracked here with placeholders only; keep real config in `~/.workgraph/` or a
+  `*.local.yaml` (both gitignored).
+
 ## License
 
-MIT
+Licensed under the [Apache License 2.0](LICENSE) — permissive, with an explicit
+patent grant. See [NOTICE](NOTICE).

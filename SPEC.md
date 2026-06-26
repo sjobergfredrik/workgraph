@@ -156,7 +156,7 @@ actually carried the work).
 ---
 
 ## Open Source Positioning
-**Repo:** `workgraph` · **License:** MIT
+**Repo:** `workgraph` · **License:** Apache-2.0
 **Tagline:** *Your work, as a graph. Event-driven. Temporally aware. Yours.*
 
 Ships with: `docker-compose.yml` (zero-config start), this `SPEC.md`,
