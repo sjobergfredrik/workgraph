@@ -43,12 +43,15 @@ def init():
 
 
 @app.command()
-def watch(path: str):
-    """Watch a directory and stream EDITED events into the graph (Ctrl-C to stop)."""
+def watch(paths: list[str] = typer.Argument(..., help="one or more directories")):
+    """Watch one or more directories and stream EDITED events (Ctrl-C to stop).
+
+    Example: workgraph watch ~/Development ~/Documents ~/Desktop
+    """
     from .adapters import FilesystemAdapter
     g = _graph()
-    adapter = FilesystemAdapter(path, g.cfg.self_email)
-    console.print(f"[cyan]Watching[/] {path} as {g.cfg.self_email}. Ctrl-C to stop.")
+    adapter = FilesystemAdapter(paths, g.cfg.self_email)
+    console.print(f"[cyan]Watching[/] {', '.join(paths)} as {g.cfg.self_email}. Ctrl-C to stop.")
     count = 0
 
     def sink(event: WorkEvent):

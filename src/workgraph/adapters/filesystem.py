@@ -17,9 +17,19 @@ from watchdog.observers import Observer
 from ..models import WorkEvent
 from ..util import entity_id_for_path, now_utc
 
-# Files we never want as nodes.
-IGNORE_SUFFIXES = {".tmp", ".swp", ".part", ".crdownload", ".DS_Store"}
-IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".next"}
+# Files we never want as nodes (editor scratch, build artifacts, lockfiles).
+IGNORE_SUFFIXES = {
+    ".tmp", ".swp", ".part", ".crdownload", ".DS_Store",
+    ".pyc", ".pyo", ".log", ".lock", ".map", ".o", ".class",
+}
+# Directories whose churn is noise, not work — caches and build output. Keeps
+# filesystem-watching a busy ~/Development tree from flooding the graph.
+IGNORE_DIRS = {
+    ".git", "node_modules", "__pycache__", ".venv", "venv", ".next",
+    "dist", "build", "target", "out", "vendor", "coverage",
+    ".turbo", ".cache", ".parcel-cache", ".pytest_cache", ".mypy_cache",
+    ".ruff_cache", ".gradle", ".idea", ".tox", "Pods", ".terraform",
+}
 MAX_EDIT_GAP_SECONDS = 1800  # cap the "duration" proxy at 30 min
 # One logical save fires several raw events (create + modify + metadata) on
 # macOS/watchdog. Collapse events for the same path within this window into the
@@ -82,18 +92,21 @@ class _Handler(FileSystemEventHandler):
 
 
 class FilesystemAdapter:
-    """Live watcher. Calls `on_event(WorkEvent)` for each edit until stopped."""
+    """Live watcher over one or more directories. Calls `on_event(WorkEvent)`
+    for each edit until stopped. A single _Handler is shared across all roots so
+    debouncing is global per path."""
 
     name = "filesystem"
 
-    def __init__(self, path: str, actor: str):
-        self.path = path
+    def __init__(self, paths: str | list[str], actor: str):
+        self.paths = [paths] if isinstance(paths, str) else list(paths)
         self.actor = actor
 
     def watch(self, on_event) -> None:
         handler = _Handler(self.actor, on_event)
         observer = Observer()
-        observer.schedule(handler, self.path, recursive=True)
+        for p in self.paths:
+            observer.schedule(handler, str(Path(p).expanduser()), recursive=True)
         observer.start()
         try:
             while True:
