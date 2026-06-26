@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  WorkGraph filesystem watcher as a macOS LaunchAgent.
+  Don't edit this template directly — run deploy/install-launchagent.sh, which
+  substitutes the __PLACEHOLDERS__ and installs the result into
+  ~/Library/LaunchAgents. Real paths/credentials never live in the repo.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>se.andhumans.workgraph.watch</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__WORKGRAPH_BIN__</string>
+    <string>watch</string>
+    __WATCH_DIRS__
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NEO4J_URI</key><string>__NEO4J_URI__</string>
+    <key>NEO4J_USER</key><string>__NEO4J_USER__</string>
+    <key>NEO4J_PASSWORD</key><string>__NEO4J_PASSWORD__</string>
+    <key>PYTHONUNBUFFERED</key><string>1</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- Start at login and keep it alive; ThrottleInterval gives Neo4j time to
+       come up after a reboot before a restart attempt. -->
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+
+  <key>WorkingDirectory</key><string>__WORKGRAPH_DIR__</string>
+  <key>StandardOutPath</key><string>__HOME__/.workgraph/watch.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/.workgraph/watch.err.log</string>
+</dict>
+</plist>

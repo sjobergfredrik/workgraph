@@ -2,6 +2,7 @@ services:
   neo4j:
     image: neo4j:5
     container_name: workgraph-neo4j
+    restart: unless-stopped
     ports:
       - "7474:7474"   # Browser
       - "7687:7687"   # Bolt

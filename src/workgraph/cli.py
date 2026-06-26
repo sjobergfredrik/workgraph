@@ -56,7 +56,13 @@ def watch(paths: list[str] = typer.Argument(..., help="one or more directories")
 
     def sink(event: WorkEvent):
         nonlocal count
-        g.ingest(event)
+        # Stay alive across transient DB outages (e.g. Neo4j restarting after a
+        # reboot). Drop the event, log, and keep watching rather than crashing.
+        try:
+            g.ingest(event)
+        except Exception as e:
+            console.print(f"  [red]! skipped[/] {event.title}: {e}")
+            return
         count += 1
         console.print(f"  + EDITED {event.title}  (events: {count})")
 
