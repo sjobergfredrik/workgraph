@@ -61,6 +61,11 @@ class Config:
     def future_boost(self) -> dict[str, float]:
         return self.raw.get("future_boost", {})
 
+    # --- Email (IMAP) ------------------------------------------------------
+    @property
+    def imap_accounts(self) -> list[dict]:
+        return self.raw.get("imap", {}).get("accounts", [])
+
 
 def load_config(path: str | os.PathLike | None = None) -> Config:
     candidates = [path] + DEFAULT_CONFIG_PATHS if path else DEFAULT_CONFIG_PATHS

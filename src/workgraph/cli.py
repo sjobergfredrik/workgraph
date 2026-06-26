@@ -84,6 +84,39 @@ def import_git(repo: str, since: Optional[str] = typer.Option(None, help="e.g. '
     g.close()
 
 
+@app.command("import-imap")
+def import_imap(
+    account: Optional[str] = typer.Option(None, help="only this account name"),
+    since_days: int = typer.Option(90, help="how far back to fetch"),
+    limit: Optional[int] = typer.Option(None, help="cap messages per folder"),
+):
+    """Pull mail via IMAP and emit SENT/RECEIVED events. Configure accounts in
+    ~/.workgraph/workgraph.yaml (gitignored) — never in the tracked repo config."""
+    from datetime import datetime, timedelta
+    from .adapters import ImapAdapter
+    g = _graph()
+    accounts = g.cfg.imap_accounts
+    if not accounts:
+        console.print("[red]No imap.accounts configured.[/] Add them to "
+                      "~/.workgraph/workgraph.yaml (see config/workgraph.yaml for the template).")
+        g.close()
+        raise typer.Exit(1)
+    since = (datetime.now() - timedelta(days=since_days)).strftime("%d-%b-%Y")
+    total = 0
+    for acct in accounts:
+        if account and acct.get("name") != account:
+            continue
+        console.print(f"[cyan]IMAP[/] {acct.get('name', acct['user'])} since {since} ...")
+        try:
+            n = g.ingest_many(ImapAdapter(acct, since=since, limit=limit).events())
+            console.print(f"  imported {n} email events")
+            total += n
+        except Exception as e:
+            console.print(f"  [red]failed[/]: {e}")
+    console.print(f"[green]Done[/] — {total} email events total")
+    g.close()
+
+
 @app.command("add-event")
 def add_event(
     type: str = typer.Option(..., "--type"),

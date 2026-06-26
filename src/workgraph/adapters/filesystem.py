@@ -21,6 +21,10 @@ from ..util import entity_id_for_path, now_utc
 IGNORE_SUFFIXES = {".tmp", ".swp", ".part", ".crdownload", ".DS_Store"}
 IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".next"}
 MAX_EDIT_GAP_SECONDS = 1800  # cap the "duration" proxy at 30 min
+# One logical save fires several raw events (create + modify + metadata) on
+# macOS/watchdog. Collapse events for the same path within this window into the
+# single EDITED already emitted, so a save counts once instead of inflating rank.
+DEBOUNCE_SECONDS = 1.5
 
 
 def _ignored(path: Path) -> bool:
@@ -35,12 +39,19 @@ class _Handler(FileSystemEventHandler):
         self.sink = sink
         self._last_seen: dict[str, float] = {}
 
-    def _emit(self, path_str: str):
+    def _emit(self, path_str: str, now: float | None = None):
         path = Path(path_str)
         if path.is_dir() or _ignored(path):
             return
-        now = time.time()
+        now = time.time() if now is None else now
         prev = self._last_seen.get(path_str)
+        # Debounce: an event landing within DEBOUNCE_SECONDS of the last *emitted*
+        # edit is part of the same logical save — fold it into that one and bail.
+        # `_last_seen` is left pointing at the emitted edit (not refreshed here), so
+        # the duration of the next genuine save is the gap to it, and a stream of
+        # saves still rate-limits to one EDITED per window instead of starving.
+        if prev is not None and now - prev < DEBOUNCE_SECONDS:
+            return
         duration = min(now - prev, MAX_EDIT_GAP_SECONDS) if prev else None
         self._last_seen[path_str] = now
         try:

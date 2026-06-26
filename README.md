@@ -68,6 +68,7 @@ workgraph rank
 | `workgraph watch ~/Documents` | Live-watch a dir, stream `EDITED` events |
 | `workgraph import-ics ~/cal.ics` | Import meetings + attendees |
 | `workgraph import-git <repo>` | Import commits as `COMMITTED` events |
+| `workgraph import-imap` | Pull mail via IMAP → `SENT`/`RECEIVED` events |
 | `workgraph add-event ...` | Manual escape hatch for any event |
 | `workgraph seed <file.json>` | Bulk-load events (demo / testing) |
 | `workgraph rank` | Compute WorkRank, print top prominent nodes |
