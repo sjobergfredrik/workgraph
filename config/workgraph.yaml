@@ -1,0 +1,48 @@
+# WorkGraph configuration — tune this freely during the 7-day trial.
+# Everything that affects WorkRank lives here so you can retune without
+# touching code or restarting ingestion.
+
+neo4j:
+  uri: bolt://localhost:7687
+  user: neo4j
+  password: workgraph
+
+# Identity of "self" — the Person node everything is measured relative to.
+self:
+  email: fredrik@example.com
+  name: Fredrik
+
+# Base weight per event (edge) type, applied BEFORE temporal decay.
+# An ATTENDED meeting matters more than a glancing REFERENCES link.
+weights:
+  EDITED: 1.0        # scaled further by edit duration (see duration_scaling)
+  ATTENDED: 2.0
+  SENT: 0.5
+  RECEIVED: 0.4
+  PRODUCED: 3.0
+  REFERENCES: 0.3
+  ATTACHED: 0.5
+  DECIDED: 2.5
+  COMMITTED: 1.5     # git commit
+
+# EDITED edges carry a duration (seconds). A 2-second open should not equal
+# a 2-hour deep edit, but a 4-hour idle window must not dominate either.
+# factor = 1 + log1p(duration) / log1p(reference_seconds), capped at max_factor.
+duration_scaling:
+  reference_seconds: 3600   # ~1 hour of editing ≈ factor 2.0
+  max_factor: 3.0
+
+# Temporal decay over an edge's age, in days. Piecewise per the spec:
+#   age <= full_until_days        -> 1.0      (recent past, full weight)
+#   full_until..fade_until_days   -> linear   (1.0 down to fade_floor)
+#   age > fade_until_days         -> floor    (archived, still traversable)
+decay:
+  full_until_days: 30
+  fade_until_days: 90
+  fade_floor: 0.3
+  floor: 0.1
+
+# Upcoming events get a boost so next week surfaces ahead of last month.
+future_boost:
+  window_days: 8
+  factor: 1.5
