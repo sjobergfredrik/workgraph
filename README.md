@@ -12,8 +12,9 @@ the context layer connecting your email, calendar, docs and meetings. WorkGraph
 is that layer, but open, self-hostable, and owned by you.
 
 > Status: **v0.1, pre-product.** The goal before any pitch is that it has run on
-> real work data for a week and proved useful. Not a UI, not multi-user, not
-> cloud-connected yet. See [SPEC.md](SPEC.md).
+> real work data for a week and proved useful. Single-user, local-first, no UI
+> beyond the Neo4j Browser — remote sources (filesystem, git, calendar, email)
+> are *pulled into* your local graph, never the other way around. See [SPEC.md](SPEC.md).
 
 ## Quick start
 
@@ -41,11 +42,11 @@ workgraph rank
 ### Daily use
 
 `workgraph watch` is a **long-running process** — it blocks and streams `EDITED`
-events as you touch files, until you stop it with Ctrl-C. Run it on its own in a
-dedicated terminal tab and leave it going through your workday:
+events as you touch files, until you stop it with Ctrl-C. Point it at one or more
+directories and leave it running in a dedicated terminal tab:
 
 ```bash
-workgraph watch ~/Documents
+workgraph watch ~/Development ~/Documents ~/Desktop
 ```
 
 Then, in a *different* tab, ingest batch sources and check what's prominent:
@@ -56,16 +57,44 @@ workgraph import-ics ~/calendar.ics
 workgraph rank
 ```
 
-> Tip: don't paste several commands in one block after `workgraph watch` — it
-> never returns, so anything after it won't run. And on zsh, avoid trailing
-> `# comments` on a command line; zsh passes them as arguments.
+> Tip: `workgraph watch` never returns — don't chain commands after it in one
+> paste. On zsh, also avoid trailing `# comments` on a command line; zsh passes
+> them as arguments. For unattended, reboot-proof watching see
+> [Run it durably](#run-it-durably-macos).
+
+### Email via IMAP
+
+Configure accounts in `~/.workgraph/workgraph.yaml` (gitignored — **never** the
+tracked repo config). A template lives in [`config/workgraph.yaml`](config/workgraph.yaml):
+
+```yaml
+imap:
+  accounts:
+    - name: work
+      host: imap.gmail.com
+      port: 993
+      user: you@example.com
+      password: "<app-password>"
+      folders: [INBOX, "[Gmail]/Sent Mail"]
+```
+
+```bash
+workgraph import-imap --since-days 30 --limit 50   # start small
+workgraph import-imap                               # all accounts, full pull
+```
+
+The sender `SENT` each message and every recipient `RECEIVED` it, so correspondent
+prominence emerges from email volume. Gmail / Google Workspace needs an
+[App Password](https://myaccount.google.com/apppasswords) (2-Step Verification on).
+Microsoft 365 often disables IMAP Basic Auth at the tenant level — if login fails,
+that account needs an OAuth2 adapter (not yet built).
 
 ### Day-1 commands
 
 | Command | What it does |
 |---------|--------------|
 | `workgraph init` | Create the self Person node + schema constraints |
-| `workgraph watch ~/Documents` | Live-watch a dir, stream `EDITED` events |
+| `workgraph watch <dirs...>` | Live-watch one or more dirs, stream `EDITED` events |
 | `workgraph import-ics ~/cal.ics` | Import meetings + attendees |
 | `workgraph import-git <repo>` | Import commits as `COMMITTED` events |
 | `workgraph import-imap` | Pull mail via IMAP → `SENT`/`RECEIVED` events |
@@ -103,6 +132,31 @@ These were the load-bearing choices the spec left open (see [SPEC.md](SPEC.md#de
    duration so a deep edit outranks a glance but an idle window can't dominate.
 3. **Offboarding** — proportional redistribution of a leaver's residual weight
    to co-contributors; sole-authored docs flagged `orphaned_knowledge`.
+
+## Run it durably (macOS)
+
+To keep the watcher running across reboots, install it as a LaunchAgent:
+
+```bash
+./deploy/install-launchagent.sh ~/Development ~/Documents ~/Desktop
+```
+
+It auto-starts at login, restarts on crash, and logs to `~/.workgraph/watch.log`.
+Neo4j returns after a reboot via `restart: unless-stopped` (set Docker Desktop to
+start at login).
+
+> **Full Disk Access is required.** A `launchd` agent receives *no* filesystem
+> events for user folders until you grant Full Disk Access to the interpreter it
+> runs. In **System Settings → Privacy & Security → Full Disk Access**, add
+> `…/workgraph/.venv/bin/python3.x` (press ⌘⇧G in the file dialog to paste the
+> full path), then restart the agent. The venv is built with `--copies` so this
+> is a stable, project-local path. Without this the agent runs but captures nothing.
+
+```bash
+launchctl print     gui/$(id -u)/se.andhumans.workgraph.watch    # status
+launchctl kickstart -k gui/$(id -u)/se.andhumans.workgraph.watch # restart
+launchctl bootout   gui/$(id -u)/se.andhumans.workgraph.watch    # stop
+```
 
 ## Develop
 
