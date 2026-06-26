@@ -32,10 +32,33 @@ Or run the CLI locally against the Dockerised Neo4j:
 ```bash
 pip install -e ".[dev]"
 export NEO4J_URI=bolt://localhost:7687
+export NEO4J_PASSWORD=workgraph
 workgraph init
 workgraph seed examples/seed_events.json
 workgraph rank
 ```
+
+### Daily use
+
+`workgraph watch` is a **long-running process** — it blocks and streams `EDITED`
+events as you touch files, until you stop it with Ctrl-C. Run it on its own in a
+dedicated terminal tab and leave it going through your workday:
+
+```bash
+workgraph watch ~/Documents
+```
+
+Then, in a *different* tab, ingest batch sources and check what's prominent:
+
+```bash
+workgraph import-git ~/Development/some-repo --since "90 days ago"
+workgraph import-ics ~/calendar.ics
+workgraph rank
+```
+
+> Tip: don't paste several commands in one block after `workgraph watch` — it
+> never returns, so anything after it won't run. And on zsh, avoid trailing
+> `# comments` on a command line; zsh passes them as arguments.
 
 ### Day-1 commands
 
