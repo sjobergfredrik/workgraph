@@ -37,8 +37,25 @@ MAX_EDIT_GAP_SECONDS = 1800  # cap the "duration" proxy at 30 min
 DEBOUNCE_SECONDS = 1.5
 
 
+def _is_temp_name(name: str) -> bool:
+    """Atomic-write / editor scratch files that get renamed onto the real file.
+    Their *real* suffix is a pid/hash, so a suffix check alone misses them
+    (e.g. 'README.md.tmp.81653.55d8ac3'). Match the tell-tale patterns instead."""
+    return (
+        ".tmp." in name                       # atomic writes: foo.tmp.<pid>.<hash>
+        or name.endswith("~")                 # emacs/gedit backups
+        or name.endswith(".crswap")           # crswap atomic saves
+        or name.startswith(".#")              # emacs lock files
+        or name.startswith("~$")              # Office lock files
+        or ".sb-" in name                     # macOS sandbox atomic writes
+    )
+
+
 def _ignored(path: Path) -> bool:
-    if path.suffix in IGNORE_SUFFIXES or path.name in IGNORE_SUFFIXES:
+    name = path.name
+    if path.suffix in IGNORE_SUFFIXES or name in IGNORE_SUFFIXES:
+        return True
+    if _is_temp_name(name):
         return True
     return any(part in IGNORE_DIRS for part in path.parts)
 
