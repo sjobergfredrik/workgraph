@@ -59,13 +59,16 @@ class Graph:
             raise ValueError("event failed vocabulary whitelist")
         w = workrank.base_weight(event.type, event.duration, self.cfg.weights)
         # Labels/types validated against whitelist above -> safe to interpolate.
+        # MERGE on event_id makes re-ingestion idempotent: running seed twice
+        # produces one edge, not two.
         cypher = (
             "MERGE (p:Person {id: $actor}) "
             "ON CREATE SET p.active = true "
             f"MERGE (n:{event.entity_type} {{id: $entity_id}}) "
             "SET n.title = coalesce($title, n.title, $entity_id), n.type = $entity_type "
-            f"CREATE (p)-[r:{event.type} {{at: datetime($at), base_weight: $w, "
-            "duration: $duration}]->(n) "
+            f"MERGE (p)-[r:{event.type} {{event_id: $event_id}}]->(n) "
+            "ON CREATE SET r += {at: datetime($at), base_weight: $w, duration: $duration, "
+            "  confidence: $confidence, source: $source} "
             "SET r += $metadata"
         )
         with self.session() as s:
@@ -76,8 +79,11 @@ class Graph:
                 entity_type=event.entity_type,
                 title=event.title,
                 at=event.at.isoformat(),
+                event_id=event.event_id,
                 w=w,
                 duration=event.duration,
+                confidence=event.confidence,
+                source=event.source,
                 metadata={f"meta_{k}": v for k, v in event.metadata.items()},
             )
 
@@ -93,7 +99,8 @@ class Graph:
         q = (
             "MATCH (p:Person)-[r]->(n) "
             "RETURN p.id AS actor, n.id AS entity_id, type(r) AS type, "
-            "r.at AS at, r.base_weight AS base_weight, r.duration AS duration"
+            "r.at AS at, r.base_weight AS base_weight, r.duration AS duration, "
+            "coalesce(r.confidence, 1.0) AS confidence, coalesce(r.source, 'unknown') AS source"
         )
         out = []
         with self.session() as s:
@@ -108,6 +115,8 @@ class Graph:
                     "at": at,
                     "weight": rec["base_weight"],
                     "duration": rec["duration"],
+                    "confidence": float(rec["confidence"] or 1.0),
+                    "source": rec["source"],
                 })
         return out
 

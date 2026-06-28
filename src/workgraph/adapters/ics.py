@@ -61,5 +61,7 @@ class IcsAdapter:
                     entity_type="Meeting",
                     at=start,
                     title=summary,
+                    source="ics",
+                    confidence=1.0,
                     metadata={"uid": uid, "location": str(comp.get("LOCATION", ""))},
                 )

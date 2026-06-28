@@ -63,10 +63,12 @@ def events_from_message(raw: bytes) -> list[WorkEvent]:
     events: list[WorkEvent] = []
     for s in senders[:1]:
         events.append(WorkEvent(type="SENT", actor=s, entity_id=entity_id,
-                                entity_type="Email", at=at, title=subject, metadata=meta))
+                                entity_type="Email", at=at, title=subject,
+                                source="imap", confidence=1.0, metadata=meta))
     for r in recipients:
         events.append(WorkEvent(type="RECEIVED", actor=r, entity_id=entity_id,
-                                entity_type="Email", at=at, title=subject, metadata=meta))
+                                entity_type="Email", at=at, title=subject,
+                                source="imap", confidence=1.0, metadata=meta))
     return events
 
 

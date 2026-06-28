@@ -94,6 +94,8 @@ class _Handler(FileSystemEventHandler):
             at=now_utc(),
             title=path.name,
             duration=duration,
+            source="filesystem",
+            confidence=1.0,
             metadata={"fingerprint_size": fp.get("size"),
                       "fingerprint_mtime": fp.get("mtime"),
                       "path": str(path)},

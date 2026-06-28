@@ -47,6 +47,19 @@ future_boost:
   window_days: 8
   factor: 1.5
 
+# Default confidence per event source. Deterministic sources (filesystem,
+# git, calendar, email) are 1.0 — they're authoritative. LLM-inferred events
+# should ship with a lower default so they're naturally discounted until an
+# adapter or manual override bumps them up. The actual confidence lives on the
+# edge in Neo4j; these are just the defaults each adapter selects.
+source_confidence:
+  filesystem: 1.0
+  git: 1.0
+  ics: 1.0
+  imap: 1.0
+  manual: 1.0
+  llm: 0.85
+
 # Email ingestion (IMAP) via `workgraph import-imap`.
 # Put REAL credentials ONLY in ~/.workgraph/workgraph.yaml (gitignored) or a
 # *.local.yaml — never in this tracked file. Template:
