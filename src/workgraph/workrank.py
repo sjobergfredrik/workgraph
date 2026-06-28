@@ -82,13 +82,14 @@ def score_edge(
     decay_cfg: dict | None = None,
     future_cfg: dict | None = None,
     duration_cfg: dict | None = None,
+    confidence: float = 1.0,
 ) -> float:
-    """score(edge) = base_weight x time_factor."""
+    """score(edge) = base_weight × time_factor × confidence."""
     weights = weights or {}
     w = weights.get(event_type, 1.0)
     if event_type == "EDITED":
         w *= duration_factor(duration, duration_cfg)
-    return w * time_factor(at, now, decay_cfg=decay_cfg, future_cfg=future_cfg)
+    return w * time_factor(at, now, decay_cfg=decay_cfg, future_cfg=future_cfg) * confidence
 
 
 def prominence(edges: Iterable[dict], *, now=None, weights=None, decay_cfg=None,
@@ -100,6 +101,11 @@ def prominence(edges: Iterable[dict], *, now=None, weights=None, decay_cfg=None,
     duration scaling AND any offboarding redistribution), that is used directly
     and only time_factor is applied on top. Otherwise the base weight is
     recomputed from (type, duration) so callers can score raw events.
+
+    Confidence (0.0-1.0, default 1.0) is an additional multiplier. Events
+    from deterministic sources (filesystem watcher) carry confidence=1.0;
+    LLM-inferred events can carry lower confidence so they naturally rank
+    behind authoritative signals.
     """
     weights = weights or {}
     scores: dict[str, float] = {}
@@ -107,6 +113,7 @@ def prominence(edges: Iterable[dict], *, now=None, weights=None, decay_cfg=None,
         bw = e.get("weight")
         if bw is None:
             bw = base_weight(e["type"], e.get("duration"), weights)
-        s = bw * time_factor(e["at"], now, decay_cfg=decay_cfg, future_cfg=future_cfg)
+        conf = float(e.get("confidence", 1.0))
+        s = bw * time_factor(e["at"], now, decay_cfg=decay_cfg, future_cfg=future_cfg) * conf
         scores[e["entity_id"]] = scores.get(e["entity_id"], 0.0) + s
     return scores

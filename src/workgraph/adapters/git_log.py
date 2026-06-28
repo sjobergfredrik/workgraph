@@ -46,6 +46,8 @@ class GitAdapter:
                     entity_type="Document",
                     at=commit["at"],
                     title=path.name,
+                    source="git",
+                    confidence=1.0,
                     metadata={"sha": commit["sha"], "subject": commit["subject"],
                               "repo": self.repo},
                 )
