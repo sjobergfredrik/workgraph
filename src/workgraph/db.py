@@ -40,6 +40,14 @@ class Graph:
             f"CREATE CONSTRAINT {t.lower()}_id IF NOT EXISTS "
             f"FOR (n:{t}) REQUIRE n.id IS UNIQUE"
             for t in ENTITY_TYPES if t != "Person"
+        ] + [
+            # The idempotent ingest does MERGE (p)-[r:TYPE {event_id}]->(n);
+            # a relationship-property index on event_id keeps that lookup fast as
+            # high-degree nodes (e.g. the self Person) accumulate edges. Neo4j
+            # relationship indexes are per-type, so create one per event type.
+            f"CREATE INDEX wg_rel_{t.lower()}_event_id IF NOT EXISTS "
+            f"FOR ()-[r:{t}]-() ON (r.event_id)"
+            for t in EVENT_TYPES
         ]
         with self.session() as s:
             for stmt in stmts:
@@ -68,8 +76,7 @@ class Graph:
             "SET n.title = coalesce($title, n.title, $entity_id), n.type = $entity_type "
             f"MERGE (p)-[r:{event.type} {{event_id: $event_id}}]->(n) "
             "ON CREATE SET r += {at: datetime($at), base_weight: $w, duration: $duration, "
-            "  confidence: $confidence, source: $source} "
-            "SET r += $metadata"
+            "  confidence: $confidence, source: $source}, r += $metadata"
         )
         with self.session() as s:
             s.run(
